@@ -1,0 +1,10 @@
+streamlit
+openai-whisper
+opencv-python
+easyocr
+sqlalchemy
+pillow
+numpy
+pandas
+requests
+ffmpeg-python
