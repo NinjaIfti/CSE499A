@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import html
 from pathlib import Path
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -8,7 +9,8 @@ import time
 from database import init_database, SessionLocal, Lecture, Transcript, Frame, Query
 from lecture_processor import LectureProcessor
 from llm_client import LLMClient
-from config import UPLOAD_DIR, VIDEO_FORMATS, MAX_VIDEO_SIZE_MB
+from video_processor import VideoProcessor
+from config import UPLOAD_DIR, PROCESSED_DIR, VIDEO_FORMATS, MAX_VIDEO_SIZE_MB
 
 st.set_page_config(
     page_title="Lecture AI - Smart Learning Assistant",
@@ -164,6 +166,7 @@ def sidebar():
         st.divider()
         
         st.markdown("### 📚 Your Lectures")
+        st.caption("Click to select • Results in Full Picture & Chat")
         
         db = SessionLocal()
         lectures = db.query(Lecture).order_by(Lecture.uploaded_at.desc()).all()
@@ -175,7 +178,8 @@ def sidebar():
                 with st.container():
                     col1, col2 = st.columns([3, 1])
                     with col1:
-                        if st.button(f"📹 {lecture.title[:20]}...", key=f"lec_{lecture.id}", use_container_width=True):
+                        label = f"📹 {lecture.title[:25]}{'...' if len(lecture.title) > 25 else ''}"
+                        if st.button(label, key=f"lec_{lecture.id}", use_container_width=True):
                             st.session_state.current_lecture_id = lecture.id
                             st.rerun()
                     with col2:
@@ -192,18 +196,21 @@ def main():
     st.markdown('<h1 class="main-header">🎓 Lecture AI</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Upload lectures, extract content, and chat with an AI tutor</p>', unsafe_allow_html=True)
     
-    tab1, tab2, tab3, tab4 = st.tabs(["📤 Upload", "💬 Chat", "📝 Content", "📊 Stats"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📤 Upload", "📋 Full Picture", "💬 Chat", "📝 Content", "📊 Stats"])
     
     with tab1:
         upload_tab()
     
     with tab2:
-        chat_tab()
+        full_picture_tab()
     
     with tab3:
-        content_tab()
+        chat_tab()
     
     with tab4:
+        content_tab()
+    
+    with tab5:
         stats_tab()
 
 def upload_tab():
@@ -238,78 +245,228 @@ def upload_tab():
                     st.metric("Status", status)
                 
                 if file_size_mb <= MAX_VIDEO_SIZE_MB:
+                    if not st.session_state.api_connected:
+                        st.warning("Connect to Colab API in sidebar first")
                     if st.button("🚀 Process Lecture", type="primary", use_container_width=True):
                         process_video(uploaded_file, lecture_title)
                 else:
                     st.error(f"File too large. Maximum size is {MAX_VIDEO_SIZE_MB}MB")
     
     with col2:
-        st.markdown("#### Processing Pipeline")
+        st.markdown("#### Processing Steps")
         st.markdown("""
         <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem;">
         
-        **1. Video Upload** 📹  
-        Upload your lecture video
+        **1. Upload** 📹 → Sends to Colab
         
-        **2. Audio Extraction** 🎵  
-        Separate audio track
+        **2. Colab** ☁️  
+        - Whisper transcription (speech)  
+        - OCR on slides (printed + handwriting)
         
-        **3. Transcription** 📝  
-        Speech-to-text with Whisper
-        
-        **4. Frame Analysis** 🖼️  
-        Extract key frames
-        
-        **5. OCR Processing** 🔍  
-        Read text from slides
-        
-        **6. AI Ready** 🤖  
-        Ask questions!
+        **3. Results** 📋  
+        - **Full Picture** tab: Everything combined  
+        - **Content** tab: View by type  
+        - **Chat** tab: Ask questions!
         
         </div>
         """, unsafe_allow_html=True)
+        
+        db = SessionLocal()
+        processing = db.query(Lecture).filter(Lecture.status == "processing").first()
+        db.close()
+        if processing:
+            st.info(f"⏳ Processing: {processing.title}")
 
 def process_video(uploaded_file, title):
+    if not st.session_state.api_connected:
+        st.error("Connect to Colab API first")
+        return
+
     video_path = UPLOAD_DIR / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uploaded_file.name}"
     with open(video_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
-    
+
     db = SessionLocal()
-    lecture = Lecture(title=title, video_path=str(video_path), status="uploaded")
+    lecture = Lecture(title=title, video_path=str(video_path), status="processing")
     db.add(lecture)
     db.commit()
     db.refresh(lecture)
     lecture_id = lecture.id
     db.close()
-    
+
     progress_bar = st.progress(0)
     status_text = st.empty()
-    
-    def update_progress(message, percent):
-        status_text.markdown(f"**{message}**")
-        progress_bar.progress(percent)
-    
-    processor = LectureProcessor()
-    db = SessionLocal()
-    
-    success = processor.process_lecture(lecture_id, str(video_path), db, progress_callback=update_progress)
-    
-    db.close()
-    
-    if success:
-        st.success("✅ Lecture processed successfully!")
-        st.session_state.current_lecture_id = lecture_id
-        st.balloons()
-        time.sleep(2)
-        st.rerun()
-    else:
-        st.error("❌ Processing failed")
 
-def chat_tab():
-    st.markdown("### 💬 Chat with Your Lecture")
+    status_text.markdown("**Uploading to Colab...**")
+    upload_result = st.session_state.llm_client.upload_video(str(video_path))
+
+    if not upload_result["success"]:
+        db = SessionLocal()
+        db.query(Lecture).filter(Lecture.id == lecture_id).update({"status": "failed"})
+        db.commit()
+        db.close()
+        st.error(f"Upload failed: {upload_result.get('error')}")
+        return
+
+    job_id = upload_result["job_id"]
+    status_text.markdown("**Processing on Colab...**")
+
+    while True:
+        status_result = st.session_state.llm_client.get_job_status(job_id)
+        if not status_result["success"]:
+            break
+        progress = status_result.get("progress", 0)
+        message = status_result.get("message", "")
+        status_text.markdown(f"**{message}** — **{progress}%**")
+        progress_bar.progress(min(progress / 100, 1.0))
+
+        if status_result["status"] == "completed":
+            break
+        if status_result["status"] == "failed":
+            db = SessionLocal()
+            db.query(Lecture).filter(Lecture.id == lecture_id).update({"status": "failed"})
+            db.commit()
+            db.close()
+            st.error(f"Processing failed: {status_result.get('error', 'Unknown error')}")
+            return
+        time.sleep(2)
+
+    result_response = st.session_state.llm_client.get_job_result(job_id)
+    if not result_response["success"]:
+        db = SessionLocal()
+        db.query(Lecture).filter(Lecture.id == lecture_id).update({"status": "failed"})
+        db.commit()
+        db.close()
+        st.error(f"Failed to get result: {result_response.get('error')}")
+        return
+
+    data = result_response["data"]
+    transcript_data = data.get("transcript", [])
+    frames_data = data.get("frames", [])
+    duration = data.get("duration", 0)
+
+    status_text.markdown("**Saving transcripts...**")
+    progress_bar.progress(0.9)
+
+    db = SessionLocal()
+    for seg in transcript_data:
+        t = Transcript(lecture_id=lecture_id, timestamp_start=seg["start"], timestamp_end=seg["end"], text=seg["text"], confidence=seg.get("confidence", 0))
+        db.add(t)
+    db.commit()
+
+    status_text.markdown("**Extracting frames and audio locally...**")
+
+    vp = VideoProcessor(str(video_path))
+    vp.open_video()
+    audio_path = PROCESSED_DIR / f"lecture_{lecture_id}" / "audio.wav"
+    audio_path.parent.mkdir(parents=True, exist_ok=True)
+    vp.extract_audio(str(audio_path))
+
+    frames_dir = PROCESSED_DIR / f"lecture_{lecture_id}" / "frames"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    extracted = vp.extract_frames(lecture_id)
+    vp.close()
+
+    for i, (timestamp, frame_path) in enumerate(extracted):
+        fd = frames_data[i] if i < len(frames_data) else {}
+        frame = Frame(
+            lecture_id=lecture_id,
+            timestamp=timestamp,
+            frame_path=frame_path,
+            extracted_text=f"{fd.get('printed_text', '')} {fd.get('handwritten_text', '')}".strip(),
+            printed_text=fd.get("printed_text", ""),
+            handwritten_text=fd.get("handwritten_text", ""),
+            ocr_confidence=fd.get("ocr_confidence", 0.0)
+        )
+        db.add(frame)
+    db.commit()
+
+    db.query(Lecture).filter(Lecture.id == lecture_id).update({"status": "completed", "duration": duration, "processed_at": datetime.utcnow()})
+    db.commit()
+    db.close()
+
+    progress_bar.progress(1.0)
+    status_text.markdown("**Done!**")
+    st.success("✅ Done! Go to **Full Picture** or **Chat** tab to see results.")
+    st.session_state.current_lecture_id = lecture_id
+    st.balloons()
+    time.sleep(3)
+    st.rerun()
+
+def full_picture_tab():
+    st.markdown("### 📋 Full Picture — What's Said + Slides + Handwriting")
     
     if not st.session_state.current_lecture_id:
-        st.warning("Select a lecture from the sidebar first")
+        st.info("Select a lecture from the sidebar. After processing, you'll see everything combined here.")
+        return
+    
+    db = SessionLocal()
+    lecture = db.query(Lecture).filter(Lecture.id == st.session_state.current_lecture_id).first()
+    
+    if not lecture:
+        st.warning("Lecture not found")
+        db.close()
+        return
+    
+    if lecture.status != "completed":
+        st.warning("Processing not complete. Select a completed lecture or wait for processing to finish.")
+        db.close()
+        return
+    
+    st.markdown(f"**📖 {lecture.title}** — All content in chronological order")
+    
+    transcripts = db.query(Transcript).filter(Transcript.lecture_id == lecture.id).order_by(Transcript.timestamp_start).all()
+    frames = db.query(Frame).filter(Frame.lecture_id == lecture.id).order_by(Frame.timestamp).all()
+    
+    all_events = []
+    for t in transcripts:
+        if t.text.strip():
+            all_events.append({"time": t.timestamp_start, "type": "speech", "text": t.text})
+    for f in frames:
+        if f.printed_text and f.printed_text.strip():
+            all_events.append({"time": f.timestamp, "type": "slide", "text": f.printed_text})
+        if f.handwritten_text and f.handwritten_text.strip():
+            all_events.append({"time": f.timestamp, "type": "handwriting", "text": f.handwritten_text})
+    
+    all_events.sort(key=lambda x: x["time"])
+    
+    for ev in all_events:
+        ts = format_time(ev["time"])
+        if ev["type"] == "speech":
+            st.markdown(f"""
+            <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 4px solid #667eea; background: #f0f4ff;">
+                <span style="color: #667eea; font-weight: 600;">{ts} 🎤 Speech</span>
+                <p style="margin: 0.25rem 0 0 0; color: #1e293b;">{ev["text"]}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif ev["type"] == "slide":
+            st.markdown(f"""
+            <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 4px solid #10b981; background: #ecfdf5;">
+                <span style="color: #059669; font-weight: 600;">{ts} 🖼️ Slide</span>
+                <p style="margin: 0.25rem 0 0 0; color: #1e293b;">{ev["text"]}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 4px solid #f59e0b; background: #fffbeb;">
+                <span style="color: #d97706; font-weight: 600;">{ts} ✍️ Handwriting</span>
+                <p style="margin: 0.25rem 0 0 0; color: #1e293b;">{ev["text"]}</p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    if not all_events:
+        st.info("No content yet. Process a lecture first.")
+    
+    st.divider()
+    st.markdown("**💬 Want to ask questions?** Go to the **Chat** tab.")
+    db.close()
+
+def chat_tab():
+    st.markdown("### 💬 Chat — Ask About the Lecture")
+    st.caption("Uses everything: what the speaker said, what's on slides, and handwriting")
+    
+    if not st.session_state.current_lecture_id:
+        st.info("Select a lecture from the sidebar first. See **Full Picture** for the combined view.")
         return
     
     if not st.session_state.api_connected:
@@ -381,21 +538,25 @@ def chat_tab():
     if st.session_state.chat_history:
         st.markdown("### Recent Conversations")
         for item in st.session_state.chat_history[:10]:
+            q = html.escape(str(item.get('question', '')))
+            a = html.escape(str(item.get('answer', ''))).replace('\n', '<br>')
+            t = html.escape(str(item.get('time', '')))
             st.markdown(f"""
             <div class="chat-message">
-                <div class="chat-question">Q: {item['question']}</div>
-                <div class="chat-answer">{item['answer']}</div>
-                <small style="color: #94a3b8;">🕐 {item['time']}</small>
+                <div class="chat-question">Q: {q}</div>
+                <div class="chat-answer">{a}</div>
+                <small style="color: #94a3b8;">🕐 {t}</small>
             </div>
             """, unsafe_allow_html=True)
     
     db.close()
 
 def content_tab():
-    st.markdown("### 📝 Lecture Content")
+    st.markdown("### 📝 Content — View by Type")
+    st.caption("Transcript, slides, and handwriting in separate tabs")
     
     if not st.session_state.current_lecture_id:
-        st.warning("Select a lecture from the sidebar")
+        st.info("Select a lecture from the sidebar")
         return
     
     db = SessionLocal()

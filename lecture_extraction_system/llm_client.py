@@ -1,7 +1,7 @@
 import requests
 import json
 from typing import Dict, Any, Optional
-from config import COLAB_API_URL, API_TIMEOUT
+from config import COLAB_API_URL, API_TIMEOUT, UPLOAD_TIMEOUT
 
 class LLMClient:
     
@@ -72,3 +72,37 @@ class LLMClient:
     
     def update_api_url(self, new_url: str):
         self.api_url = new_url
+
+    def upload_video(self, video_path: str) -> Dict[str, Any]:
+        try:
+            filename = video_path.split("/")[-1].split("\\")[-1]
+            with open(video_path, "rb") as f:
+                response = self.session.post(
+                    f"{self.api_url}/upload",
+                    files={"video": (filename, f)},
+                    timeout=UPLOAD_TIMEOUT
+                )
+            if response.status_code == 200:
+                return {"success": True, "job_id": response.json().get("job_id")}
+            return {"success": False, "error": response.json().get("error", f"Status {response.status_code}")}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def get_job_status(self, job_id: str) -> Dict[str, Any]:
+        try:
+            response = self.session.get(f"{self.api_url}/status/{job_id}", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                return {"success": True, "status": data["status"], "progress": data["progress"], "message": data["message"], "error": data.get("error")}
+            return {"success": False, "status": "unknown"}
+        except Exception as e:
+            return {"success": False, "status": "error", "error": str(e)}
+
+    def get_job_result(self, job_id: str) -> Dict[str, Any]:
+        try:
+            response = self.session.get(f"{self.api_url}/result/{job_id}", timeout=60)
+            if response.status_code == 200:
+                return {"success": True, "data": response.json()}
+            return {"success": False, "error": response.json().get("error", f"Status {response.status_code}")}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

@@ -17,6 +17,7 @@ DATABASE_URL = f"sqlite:///{DB_DIR}/lectures.db"
 # API
 COLAB_API_URL = os.getenv("COLAB_API_URL", "http://localhost:8000")
 API_TIMEOUT = 300
+UPLOAD_TIMEOUT = 900
 
 # Video
 FRAME_EXTRACTION_RATE = 30
@@ -30,6 +31,5 @@ WHISPER_MODEL = "base"
 OCR_LANGUAGES = ['en']
 OCR_CONFIDENCE_THRESHOLD = 0.5
 
-# LLM
-CHUNK_SIZE = 1000
-MAX_PROMPT_LENGTH = 2000
+# LLM - Phi-2 has 2048 token limit, ~4 chars per token
+MAX_PROMPT_LENGTH = 6000

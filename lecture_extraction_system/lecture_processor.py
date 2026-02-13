@@ -5,7 +5,7 @@ from database import Lecture, Transcript, Frame, get_db
 from video_processor import VideoProcessor
 from audio_processor import AudioProcessor
 from ocr_processor import OCRProcessor
-from config import PROCESSED_DIR
+from config import PROCESSED_DIR, MAX_PROMPT_LENGTH
 import os
 
 class LectureProcessor:
@@ -131,18 +131,26 @@ class LectureProcessor:
             time_str = self._format_timestamp(transcript.timestamp_start)
             context_parts.append(f"[{time_str}] {transcript.text}")
         
-        context_parts.append("\n\n=== TEXT FROM SLIDES ===\n")
+        context_parts.append("\n\n=== TEXT FROM SLIDES (Printed) ===\n")
         frames = db.query(Frame).filter(
-            Frame.lecture_id == lecture_id,
-            Frame.extracted_text != ""
+            Frame.lecture_id == lecture_id
         ).order_by(Frame.timestamp).all()
         
         for frame in frames:
-            if frame.extracted_text.strip():
+            if frame.printed_text and frame.printed_text.strip():
                 time_str = self._format_timestamp(frame.timestamp)
-                context_parts.append(f"[{time_str}] {frame.extracted_text}")
+                context_parts.append(f"[{time_str}] {frame.printed_text}")
         
-        return "\n".join(context_parts)
+        context_parts.append("\n\n=== HANDWRITING ON SLIDES ===\n")
+        for frame in frames:
+            if frame.handwritten_text and frame.handwritten_text.strip():
+                time_str = self._format_timestamp(frame.timestamp)
+                context_parts.append(f"[{time_str}] {frame.handwritten_text}")
+
+        full_context = "\n".join(context_parts)
+        if len(full_context) > MAX_PROMPT_LENGTH:
+            full_context = full_context[:MAX_PROMPT_LENGTH] + "\n\n[Truncated...]"
+        return full_context
     
     def _format_timestamp(self, seconds: float) -> str:
         minutes = int(seconds // 60)

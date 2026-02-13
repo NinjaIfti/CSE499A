@@ -23,24 +23,15 @@ cd lecture_extraction_system
 setup.bat
 ```
 
-### 2. Setup Google Colab LLM
+### 2. Setup Google Colab
 - Open https://colab.research.google.com/
-- Create new notebook with GPU runtime
-- Run these cells:
+- Create new notebook with **GPU** runtime
+- Upload `colab_server.ipynb` from this folder
+- Add your ngrok token in Cell 2
+- Run all cells (1, 2, 3, 4)
+- Copy the ngrok URL (e.g. https://xxxx.ngrok-free.dev)
 
-```python
-# Install packages
-!pip install flask pyngrok transformers torch accelerate bitsandbytes
-
-# Setup ngrok (get token from https://dashboard.ngrok.com/)
-from pyngrok import ngrok
-ngrok.set_auth_token("YOUR_TOKEN")
-
-# Copy content from colab_server_example.py and run
-start_server()
-```
-
-- Copy the ngrok URL (https://xxxx.ngrok.io)
+Colab handles: Whisper transcription, OCR, frame extraction, and LLM. Your PC saves transcripts, frames, and audio locally.
 
 ### 3. Run Application
 
@@ -56,11 +47,12 @@ streamlit run app.py
 ```
 
 ### 4. Use the System
-1. Paste Colab URL in sidebar settings
-2. Click "Test Connection"
-3. Upload lecture video
-4. Wait for processing
-5. Ask questions in Chat tab
+1. Paste Colab URL in sidebar
+2. Click "Connect"
+3. Upload video in Upload tab
+4. Processing runs on Colab (progress shown in frontend)
+5. Transcripts, frames, audio saved locally
+6. Chat tab for Q&A
 
 ## Configuration
 
