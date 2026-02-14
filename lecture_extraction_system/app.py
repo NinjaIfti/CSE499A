@@ -58,8 +58,9 @@ if 'chats' not in st.session_state:
         new_row = Chat(lecture_id=None, title="New chat")
         db.add(new_row)
         db.commit()
+        new_id = new_row.id
         db.close()
-        st.session_state.chats = [{"id": new_row.id, "lecture_id": None, "title": "New chat", "messages": []}]
+        st.session_state.chats = [{"id": new_id, "lecture_id": None, "title": "New chat", "messages": []}]
     else:
         st.session_state.chats = chats
 if 'active_chat_id' not in st.session_state:
@@ -93,9 +94,10 @@ def new_chat():
     row = Chat(lecture_id=None, title="New chat")
     db.add(row)
     db.commit()
+    row_id = row.id
     db.close()
-    st.session_state.chats.append({"id": row.id, "lecture_id": None, "title": "New chat", "messages": []})
-    st.session_state.active_chat_id = row.id
+    st.session_state.chats.append({"id": row_id, "lecture_id": None, "title": "New chat", "messages": []})
+    st.session_state.active_chat_id = row_id
 
 def sidebar():
     with st.sidebar:
