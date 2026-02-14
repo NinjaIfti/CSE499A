@@ -19,106 +19,148 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for professional look
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'DM Sans', -apple-system, sans-serif;
+    }
+    
     .main-header {
-        font-size: 2.5rem;
-        font-weight: 700;
-        background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+        font-size: 2.75rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #0f172a 0%, #334155 50%, #0f172a 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.25rem;
+        letter-spacing: -0.02em;
     }
     .sub-header {
         color: #64748b;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
     }
     .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 1rem;
-        color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        padding: 1.25rem;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .stat-value {
-        font-size: 2rem;
+    .stat-card .stat-value {
+        font-size: 1.75rem;
         font-weight: 700;
-        margin-bottom: 0.2rem;
+        color: #0f172a;
+        margin-bottom: 0.15rem;
     }
-    .stat-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
+    .stat-card .stat-label {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 500;
     }
     .chat-message {
-        padding: 1rem;
-        border-radius: 0.5rem;
+        padding: 1.25rem;
+        border-radius: 12px;
         margin-bottom: 1rem;
-        border-left: 4px solid #667eea;
-        background: #f8fafc;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .chat-question {
         font-weight: 600;
-        color: #1e293b;
+        color: #0f172a;
         margin-bottom: 0.5rem;
+        font-size: 0.95rem;
     }
     .chat-answer {
         color: #475569;
-        line-height: 1.6;
-    }
-    .upload-box {
-        border: 2px dashed #cbd5e1;
-        border-radius: 1rem;
-        padding: 2rem;
-        text-align: center;
-        background: #f8fafc;
-        transition: all 0.3s;
-    }
-    .upload-box:hover {
-        border-color: #667eea;
-        background: #f1f5f9;
+        line-height: 1.7;
+        font-size: 0.9rem;
     }
     .status-badge {
         display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.875rem;
-        font-weight: 500;
+        padding: 0.2rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
     }
     .status-completed { background: #dcfce7; color: #166534; }
     .status-processing { background: #fef3c7; color: #92400e; }
     .status-failed { background: #fee2e2; color: #991b1b; }
     .transcript-item {
-        padding: 0.75rem;
-        border-left: 3px solid #e2e8f0;
+        padding: 1rem;
+        border-radius: 10px;
         margin-bottom: 0.5rem;
-        background: white;
-        border-radius: 0.5rem;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
     }
     .timestamp {
-        color: #667eea;
+        color: #6366f1;
         font-weight: 600;
-        font-size: 0.875rem;
+        font-size: 0.8rem;
     }
     .stButton>button {
-        border-radius: 0.5rem;
-        font-weight: 500;
-        transition: all 0.3s;
+        border-radius: 10px;
+        font-weight: 600;
+        padding: 0.5rem 1.25rem;
+        transition: all 0.2s;
+    }
+    .stButton>button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
     }
     .connection-success {
-        background: #dcfce7;
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
         color: #166534;
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        font-weight: 500;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
     }
     .connection-error {
-        background: #fee2e2;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
         color: #991b1b;
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        font-weight: 500;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    [data-testid="stSidebar"] .stMarkdown h3 {
+        color: #0f172a;
+        font-weight: 700;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600;
+        border-radius: 8px;
+    }
+    div[data-testid="stFileUploader"] {
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 2rem;
+        background: #fafbfc;
+    }
+    div[data-testid="stFileUploader"]:hover {
+        border-color: #6366f1;
+        background: #f5f3ff;
+    }
+    .section-header {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 1rem;
+    }
+    .hint-text {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -136,7 +178,7 @@ if 'chat_history' not in st.session_state:
 
 def sidebar():
     with st.sidebar:
-        st.markdown("### ⚙️ API Configuration")
+        st.markdown("### ⚙️ Settings")
         
         api_url = st.text_input(
             "Colab API URL",
@@ -193,8 +235,8 @@ def sidebar():
 def main():
     sidebar()
     
-    st.markdown('<h1 class="main-header">🎓 Lecture AI</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Upload lectures, extract content, and chat with an AI tutor</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Lecture AI</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Upload lectures → Extract content → Chat with an AI tutor</p>', unsafe_allow_html=True)
     
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📤 Upload", "📋 Full Picture", "💬 Chat", "📝 Content", "📊 Stats"])
     
@@ -214,7 +256,7 @@ def main():
         stats_tab()
 
 def upload_tab():
-    st.markdown("### Upload New Lecture")
+    st.markdown('<p class="section-header">Upload New Lecture</p>', unsafe_allow_html=True)
     
     col1, col2 = st.columns([2, 1])
     
@@ -253,21 +295,17 @@ def upload_tab():
                     st.error(f"File too large. Maximum size is {MAX_VIDEO_SIZE_MB}MB")
     
     with col2:
-        st.markdown("#### Processing Steps")
+        st.markdown("#### How it works")
         st.markdown("""
-        <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem;">
+        <div style="background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.25rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <p style="margin: 0 0 0.75rem 0; font-weight: 600; color: #0f172a;">1. Upload 📹</p>
+        <p style="margin: 0 0 1rem 0; font-size: 0.9rem; color: #475569;">Video is sent to Colab for processing</p>
         
-        **1. Upload** 📹 → Sends to Colab
+        <p style="margin: 0 0 0.75rem 0; font-weight: 600; color: #0f172a;">2. Process ☁️</p>
+        <p style="margin: 0 0 1rem 0; font-size: 0.9rem; color: #475569;">Whisper + OCR extract speech & slide text</p>
         
-        **2. Colab** ☁️  
-        - Whisper transcription (speech)  
-        - OCR on slides (printed + handwriting)
-        
-        **3. Results** 📋  
-        - **Full Picture** tab: Everything combined  
-        - **Content** tab: View by type  
-        - **Chat** tab: Ask questions!
-        
+        <p style="margin: 0 0 0.75rem 0; font-weight: 600; color: #0f172a;">3. Explore 📋</p>
+        <p style="margin: 0; font-size: 0.9rem; color: #475569;">Full Picture, Content & Chat tabs</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -394,7 +432,7 @@ def process_video(uploaded_file, title):
     st.rerun()
 
 def full_picture_tab():
-    st.markdown("### 📋 Full Picture — What's Said + Slides + Handwriting")
+    st.markdown('<p class="section-header">📋 Full Picture — Speech + Slides + Handwriting</p>', unsafe_allow_html=True)
     
     if not st.session_state.current_lecture_id:
         st.info("Select a lecture from the sidebar. After processing, you'll see everything combined here.")
@@ -432,25 +470,26 @@ def full_picture_tab():
     
     for ev in all_events:
         ts = format_time(ev["time"])
+        text_escaped = html.escape(ev["text"])
         if ev["type"] == "speech":
             st.markdown(f"""
-            <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 4px solid #667eea; background: #f0f4ff;">
-                <span style="color: #667eea; font-weight: 600;">{ts} 🎤 Speech</span>
-                <p style="margin: 0.25rem 0 0 0; color: #1e293b;">{ev["text"]}</p>
+            <div style="padding: 1rem; margin-bottom: 0.5rem; border-radius: 10px; border: 1px solid #e0e7ff; background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);">
+                <span style="color: #4338ca; font-weight: 700; font-size: 0.85rem;">{ts} · Speech</span>
+                <p style="margin: 0.5rem 0 0 0; color: #1e293b; line-height: 1.6;">{text_escaped}</p>
             </div>
             """, unsafe_allow_html=True)
         elif ev["type"] == "slide":
             st.markdown(f"""
-            <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 4px solid #10b981; background: #ecfdf5;">
-                <span style="color: #059669; font-weight: 600;">{ts} 🖼️ Slide</span>
-                <p style="margin: 0.25rem 0 0 0; color: #1e293b;">{ev["text"]}</p>
+            <div style="padding: 1rem; margin-bottom: 0.5rem; border-radius: 10px; border: 1px solid #a7f3d0; background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);">
+                <span style="color: #059669; font-weight: 700; font-size: 0.85rem;">{ts} · Slide</span>
+                <p style="margin: 0.5rem 0 0 0; color: #1e293b; line-height: 1.6;">{text_escaped}</p>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
-            <div style="padding: 0.75rem; margin-bottom: 0.5rem; border-left: 4px solid #f59e0b; background: #fffbeb;">
-                <span style="color: #d97706; font-weight: 600;">{ts} ✍️ Handwriting</span>
-                <p style="margin: 0.25rem 0 0 0; color: #1e293b;">{ev["text"]}</p>
+            <div style="padding: 1rem; margin-bottom: 0.5rem; border-radius: 10px; border: 1px solid #fde68a; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);">
+                <span style="color: #d97706; font-weight: 700; font-size: 0.85rem;">{ts} · Handwriting</span>
+                <p style="margin: 0.5rem 0 0 0; color: #1e293b; line-height: 1.6;">{text_escaped}</p>
             </div>
             """, unsafe_allow_html=True)
     
@@ -462,8 +501,8 @@ def full_picture_tab():
     db.close()
 
 def chat_tab():
-    st.markdown("### 💬 Chat — Ask About the Lecture")
-    st.caption("Uses everything: what the speaker said, what's on slides, and handwriting")
+    st.markdown('<p class="section-header">💬 Chat</p>', unsafe_allow_html=True)
+    st.caption("Ask questions about the lecture — uses speech, slides & handwriting")
     
     if not st.session_state.current_lecture_id:
         st.info("Select a lecture from the sidebar first. See **Full Picture** for the combined view.")
@@ -552,8 +591,8 @@ def chat_tab():
     db.close()
 
 def content_tab():
-    st.markdown("### 📝 Content — View by Type")
-    st.caption("Transcript, slides, and handwriting in separate tabs")
+    st.markdown('<p class="section-header">📝 Content</p>', unsafe_allow_html=True)
+    st.caption("Transcript, slides, and handwriting — view by type")
     
     if not st.session_state.current_lecture_id:
         st.info("Select a lecture from the sidebar")
@@ -637,7 +676,7 @@ def content_tab():
     db.close()
 
 def stats_tab():
-    st.markdown("### 📊 System Statistics")
+    st.markdown('<p class="section-header">📊 Statistics</p>', unsafe_allow_html=True)
     
     db = SessionLocal()
     
@@ -665,12 +704,14 @@ def stats_tab():
         lectures = db.query(Lecture).order_by(Lecture.uploaded_at.desc()).limit(5).all()
         for lecture in lectures:
             status_class = f"status-{lecture.status}"
+            title_esc = html.escape(lecture.title)
             st.markdown(f"""
-            <div style="padding: 1rem; background: white; border-radius: 0.5rem; margin-bottom: 0.5rem; border-left: 4px solid #667eea;">
-                <strong>{lecture.title}</strong>
-                <br>
-                <span class="status-badge {status_class}">{lecture.status}</span>
-                <small style="color: #94a3b8; margin-left: 0.5rem;">{lecture.uploaded_at.strftime('%Y-%m-%d %H:%M')}</small>
+            <div style="padding: 1rem; background: white; border-radius: 10px; margin-bottom: 0.5rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                <strong style="color: #0f172a;">{title_esc}</strong>
+                <div style="margin-top: 0.5rem;">
+                    <span class="status-badge {status_class}">{lecture.status}</span>
+                    <small style="color: #94a3b8; margin-left: 0.5rem;">{lecture.uploaded_at.strftime('%Y-%m-%d %H:%M')}</small>
+                </div>
             </div>
             """, unsafe_allow_html=True)
     
