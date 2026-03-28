@@ -30,6 +30,6 @@ echo.
 echo Launching Streamlit app...
 echo Press Ctrl+C to stop the server
 echo.
-streamlit run app.py
+streamlit run ui_app.py
 
 pause

@@ -17,7 +17,7 @@ class LLMClient:
             print(f"Connection test failed: {e}")
             return False
     
-    def generate_response(self, prompt: str, context: str = "", max_tokens: int = 500, temperature: float = 0.7) -> Dict[str, Any]:
+    def generate_response(self, prompt: str, context: str = "", max_tokens: int = 500, temperature: float = 0.7, job_id: Optional[str] = None) -> Dict[str, Any]:
         try:
             payload = {
                 "prompt": prompt,
@@ -25,6 +25,8 @@ class LLMClient:
                 "max_tokens": max_tokens,
                 "temperature": temperature
             }
+            if job_id:
+                payload["job_id"] = job_id
             
             response = self.session.post(
                 f"{self.api_url}/generate",
@@ -33,10 +35,13 @@ class LLMClient:
             )
             
             if response.status_code == 200:
+                data = response.json()
                 return {
                     "success": True,
-                    "response": response.json().get("text", ""),
-                    "metadata": response.json().get("metadata", {})
+                    "response": data.get("text", ""),
+                    "clip_id": data.get("clip_id"),
+                    "timestamp": data.get("timestamp"),
+                    "metadata": data.get("metadata", {})
                 }
             else:
                 return {
@@ -57,6 +62,9 @@ class LLMClient:
                 "error": f"Error communicating with LLM: {str(e)}",
                 "response": ""
             }
+
+    def get_clip_url(self, clip_id: str) -> str:
+        return f"{self.api_url}/clip/{clip_id}"
     
     def summarize_lecture(self, transcript: str, max_length: int = 300) -> Dict[str, Any]:
         prompt = f"Summarize the following lecture in about {max_length} words:\n\n{transcript}"
@@ -103,6 +111,15 @@ class LLMClient:
             response = self.session.get(f"{self.api_url}/result/{job_id}", timeout=60)
             if response.status_code == 200:
                 return {"success": True, "data": response.json()}
+            return {"success": False, "error": response.json().get("error", f"Status {response.status_code}")}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def delete_job(self, job_id: str) -> Dict[str, Any]:
+        try:
+            response = self.session.delete(f"{self.api_url}/job/{job_id}", timeout=10)
+            if response.status_code == 200:
+                return {"success": True}
             return {"success": False, "error": response.json().get("error", f"Status {response.status_code}")}
         except Exception as e:
             return {"success": False, "error": str(e)}

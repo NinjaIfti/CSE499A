@@ -15,15 +15,21 @@ class LectureProcessor:
         self.audio_processor = AudioProcessor()
         self.ocr_processor = OCRProcessor()
     
-    def process_lecture(self, lecture_id: int, video_path: str, db: Session, progress_callback=None):
+    def process_lecture(self, lecture_id: int, video_path: str, db: Session, progress_callback=None, cancel_event=None):
         try:
-            # Update status
+            def cancelled():
+                return cancel_event is not None and cancel_event.is_set()
+
             lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
             lecture.status = "processing"
             db.commit()
-            
+
             if progress_callback:
                 progress_callback("Initializing video processor...", 10)
+            if cancelled():
+                lecture.status = "cancelled"
+                db.commit()
+                return False
             
             self.video_processor = VideoProcessor(video_path)
             if not self.video_processor.open_video():
@@ -35,7 +41,11 @@ class LectureProcessor:
             
             if progress_callback:
                 progress_callback("Extracting audio...", 20)
-            
+            if cancelled():
+                lecture.status = "cancelled"
+                db.commit()
+                return False
+
             audio_path = PROCESSED_DIR / f"lecture_{lecture_id}" / "audio.wav"
             audio_path.parent.mkdir(parents=True, exist_ok=True)
             
@@ -44,7 +54,11 @@ class LectureProcessor:
             
             if progress_callback:
                 progress_callback("Transcribing audio with Whisper...", 30)
-            
+            if cancelled():
+                lecture.status = "cancelled"
+                db.commit()
+                return False
+
             segments = self.audio_processor.get_segments_with_timestamps(str(audio_path))
             
             if progress_callback:
@@ -63,7 +77,11 @@ class LectureProcessor:
             
             if progress_callback:
                 progress_callback("Extracting frames...", 60)
-            
+            if cancelled():
+                lecture.status = "cancelled"
+                db.commit()
+                return False
+
             frames_data = self.video_processor.extract_frames(lecture_id)
             
             if progress_callback:
@@ -71,8 +89,12 @@ class LectureProcessor:
             
             total_frames = len(frames_data)
             for idx, (timestamp, frame_path) in enumerate(frames_data):
+                if cancelled():
+                    lecture.status = "cancelled"
+                    db.commit()
+                    return False
                 ocr_result = self.ocr_processor.extract_text(frame_path)
-                
+
                 frame = Frame(
                     lecture_id=lecture_id,
                     timestamp=timestamp,

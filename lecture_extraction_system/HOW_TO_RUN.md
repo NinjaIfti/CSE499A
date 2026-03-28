@@ -43,7 +43,7 @@ Colab handles: Whisper transcription, OCR, frame extraction, and LLM. Your PC sa
 **Option B: Manual**
 ```powershell
 .\venv\Scripts\activate
-streamlit run app.py
+streamlit run ui_app.py
 ```
 
 ### 4. Use the System
